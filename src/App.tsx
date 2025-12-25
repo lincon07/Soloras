@@ -2,6 +2,7 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import { check } from "@tauri-apps/plugin-updater";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
@@ -12,6 +13,10 @@ function App() {
     setGreetMsg(await invoke("greet", { name }));
   }
 
+  const handleCheckForUpdates = async () => {
+    const isUpdateAvail = await check();
+    console.log(isUpdateAvail);
+  };
   return (
     <main className="container">
       <h1>Welcome to Tauri + React</h1>
@@ -43,6 +48,7 @@ function App() {
         />
         <button type="submit">Greet</button>
       </form>
+      <button onClick={handleCheckForUpdates}>Check for updates</button>
       <p>{greetMsg}</p>
     </main>
   );
