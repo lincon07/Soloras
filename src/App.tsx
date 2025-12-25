@@ -12,10 +12,11 @@ function App() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
   }
-
+const [response, setResponse] = useState<any>("");
   const handleCheckForUpdates = async () => {
     const isUpdateAvail = await check();
     console.log(isUpdateAvail);
+    setResponse(isUpdateAvail);
   };
   return (
     <main className="container">
@@ -50,6 +51,7 @@ function App() {
       </form>
       <button onClick={handleCheckForUpdates}>Check for updates</button>
       <p>{greetMsg}</p>
+      <p>Update available: {response ? "Yes" : "No"}</p>
     </main>
   );
 }
