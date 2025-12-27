@@ -9,12 +9,10 @@ import { relaunch } from "@tauri-apps/plugin-process"
 import { toast } from "sonner"
 import { UpdaterProviderType } from "@/types/providers/updater"
 
-/* ---------------- Context ---------------- */
 
 export const UpdaterProviderContext =
     createContext<UpdaterProviderType | null>(null)
 
-/* ---------------- Provider ---------------- */
 
 export const UpdaterProvider: React.FC<
     React.PropsWithChildren
@@ -23,7 +21,6 @@ export const UpdaterProvider: React.FC<
     const [update, setUpdate] = useState<Update | null>(null)
     const [updateAvailable, setUpdateAvailable] = useState(false)
 
-    /* ---------------- Actions ---------------- */
 
     const checkForUpdates = useCallback(async () => {
         setChecking(true)
@@ -47,7 +44,11 @@ export const UpdaterProvider: React.FC<
                 setUpdate(null)
                 setUpdateAvailable(false)
             }
-        } finally {
+        }  catch (error) {
+            console.error("Error checking for updates:", error)
+            toast.error("Failed to check for updates", {description: String(error)})
+        }
+        finally {
             setChecking(false)
         }
     }, [])
@@ -68,13 +69,11 @@ export const UpdaterProvider: React.FC<
         )
     }, [update])
 
-    /* ---------------- Auto-check on launch ---------------- */
 
     useEffect(() => {
         checkForUpdates()
     }, [checkForUpdates])
 
-    /* ---------------- Context Value ---------------- */
 
     const value: UpdaterProviderType = {
         checking,
@@ -89,4 +88,15 @@ export const UpdaterProvider: React.FC<
             {children}
         </UpdaterProviderContext.Provider>
     )
+}
+
+
+export const useUpdater = (): UpdaterProviderType => {
+    const context = React.useContext(UpdaterProviderContext)
+    if (!context) {
+        throw new Error(
+            "useUpdater must be used within an UpdaterProvider"
+        )
+    }
+    return context
 }

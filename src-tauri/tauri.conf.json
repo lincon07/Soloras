@@ -18,7 +18,6 @@
         "focus": true,
         "zoomHotkeysEnabled": false,
         "alwaysOnTop": true,
-        "hiddenTitle": true,
         "decorations": false
       }
     ],
