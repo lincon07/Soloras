@@ -1,5 +1,7 @@
 mod device_state;
 mod mdns;
+mod pairing_server; // 👈 add this
+
 
 use std::sync::{Arc, Mutex};
 
@@ -10,6 +12,10 @@ use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_store::StoreBuilder;
 use uuid::Uuid;
+
+use pairing_server::start_pairing_server;
+
+type MdnsOpt = Arc<Mutex<Option<MdnsHandle>>>;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -54,17 +60,22 @@ pub fn run() {
             };
 
             let device_state = Arc::new(Mutex::new(DeviceState::new(device_id)));
+let mdns_handle: MdnsOpt = Arc::new(Mutex::new(None));
 
             // Start mDNS if unpaired
-            {
-                let state = device_state.lock().unwrap();
-                if !state.paired {
-                    MdnsHandle::start(&state);
-                }
-            }
+{
+    let state = device_state.lock().unwrap();
+    if !state.paired {
+        *mdns_handle.lock().unwrap() = Some(MdnsHandle::start(&state));
+    }
+}
+            
+            // Start pairing server
+            start_pairing_server(app.handle().clone(), device_state.clone(), mdns_handle.clone());
 
             // Make state available to commands
-            app.manage(device_state);
+            app.manage(device_state.clone());
+            app.manage(mdns_handle.clone());
 
             Ok(())
         })
