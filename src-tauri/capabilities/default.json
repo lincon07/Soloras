@@ -13,6 +13,22 @@
     "updater:allow-download",
     "updater:allow-download-and-install",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+     "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-maximize",
+    "core:window:allow-minimize",
+    "core:app:allow-default-window-icon",
+    "core:window:allow-hide",
+    "core:app:allow-app-hide",
+    "core:webview:allow-webview-hide",
+    "core:window:allow-destroy",
+    "core:window:allow-create",
+    "core:window:allow-show"
   ]
 }

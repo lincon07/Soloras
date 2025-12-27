@@ -17,7 +17,9 @@
         "resizable": false,
         "focus": true,
         "zoomHotkeysEnabled": false,
-        "alwaysOnTop": true
+        "alwaysOnTop": true,
+        "hiddenTitle": true,
+        "decorations": false
       }
     ],
     "security": {
