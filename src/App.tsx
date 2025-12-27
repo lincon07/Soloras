@@ -4,12 +4,12 @@ import { Button } from "./components/ui/button";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { useUpdater } from "./providers/updater";
+import { useDeviceState } from "./hooks/useDeviceState";
 
 function App() {
   const appWindow = getCurrentWindow()
-  const updater = useUpdater()
-
-  const applicationPlatform =  platform()
+  const { loading, state} = useDeviceState()
+  const applicationPlatform = platform()
 
   useEffect(() => {
     if (applicationPlatform === "windows") {
@@ -22,21 +22,15 @@ function App() {
   }, [applicationPlatform])
 
   return (
-    <main className="container">
-
-      <div>
-        <span>
-          Welcome to Soloras
-        </span>
-
-        <Button onClick={() => appWindow.close()}>
-          Close App
-        </Button>
-      </div>
-
-    <Button onClick={() => updater?.checkForUpdates()}>
-      Check For Updates
-    </Button>
+    <main className="m-10">
+      {state && (
+      <>
+        <div>Device Name: {state.device_name}</div>
+        <div>Device ID: {state.device_id}</div>
+        <div>Paired: {state.paired ? "Yes" : "No"}</div>
+        <div>Pairing Code: {state.pairing_code || "N/A"}</div></>
+        
+      )}
     </main>
   );
 }
