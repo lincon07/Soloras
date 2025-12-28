@@ -13,12 +13,9 @@
     "windows": [
       {
         "title": "soloras-tauri",
-        "fullscreen": true,
-        "resizable": false,
         "focus": true,
-        "zoomHotkeysEnabled": false,
-        "alwaysOnTop": false,
-        "decorations": false
+        "zoomHotkeysEnabled": false
+       
       }
     ],
     "security": {

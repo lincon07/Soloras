@@ -26,10 +26,11 @@ tauri-plugin-process = "2"
 tauri-plugin-os = "2"
 
 # ---- mDNS / networking ----
-mdns-sd = "0.10"
+mdns-sd = "0.17.1"
 
 # ---- async runtime (required by mdns + axum later) ----
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
+tracing = "0.1"
 
 # ---- utilities ----
 uuid = { version = "1", features = ["v4"] }

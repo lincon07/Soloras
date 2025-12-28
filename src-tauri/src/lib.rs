@@ -1,123 +1,81 @@
-mod device_state;
-mod mdns;
-mod pairing_server; // 👈 add this
-mod persistence;
+// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
+// 1️⃣ Declare modules FIRST
+pub mod discovery;
+pub mod pairing;
 
-use std::sync::{Arc, Mutex};
-
-use device_state::DeviceState;
-use mdns::MdnsHandle;
-
-use tauri::Emitter;
+// 2️⃣ Imports AFTER modules
+use axum::Router;
 use tauri::Manager;
-use tauri_plugin_store::StoreBuilder;
-use uuid::Uuid;
 
-use pairing_server::{
-    start_pairing_server,
-    start_pairing_mode,
-    stop_pairing,
-    list_controllers,
-    set_device_name,
-};
-
-use crate::persistence::load_persisted_state;
-
-type MdnsOpt = Arc<Mutex<Option<MdnsHandle>>>;
+use discovery::udp::start_udp_discovery;
+use crate::pairing::routes::{pairing_router, PairingCtx};
+use crate::pairing::state::new_pairing_state;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}!", name)
-}
-
-#[tauri::command]
-fn get_device_state(
-    state: tauri::State<'_, Arc<Mutex<DeviceState>>>,
-) -> DeviceState {
-    state.lock().unwrap().clone()
-}
-
-fn emit_state(app: &tauri::AppHandle, state: &DeviceState) {
-    let _ = app.emit("device-state-updated", state);
+    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
-            // Create store
-let store = StoreBuilder::new(app, "device.json").build()?;
-let _ = store.reload();
+            // -------------------------------
+            // Hub identity
+            // -------------------------------
+            let hub_id = "f9d1e6c3".to_string();
+            let hub_name = "Living Room Hub".to_string();
+            let api_port = 3000;
 
-app.manage(store.clone());
-            // Load or generate device_id
-let device_id = match store.get("device_id") {
-    Some(v) => v.as_str().unwrap().to_string(),
-    None => {
-        let id = uuid::Uuid::new_v4().to_string();
-        store.set("device_id", id.clone());
-        let _ = store.save();
-        id
-    }
-};
+            let pairing_enabled = || true;
 
-let paired = store
-    .get("paired")
-    .and_then(|v| v.as_bool())
-    .unwrap_or(false);
+            // -------------------------------
+            // UDP discovery (broadcast responder)
+            // -------------------------------
+            tauri::async_runtime::spawn(start_udp_discovery(
+                hub_id,
+                hub_name,
+                api_port,
+                pairing_enabled,
+            ));
 
-let controllers = store
-    .get("controllers")
-    .and_then(|v| serde_json::from_value(v.clone()).ok())
-    .unwrap_or_else(|| vec![]);
+            // -------------------------------
+            // Pairing state + Axum API
+            // -------------------------------
+            let app_handle = app.handle().clone();
+            let pairing_state = new_pairing_state();
 
-let isPairing = store
-    .get("isPairing")
-    .and_then(|v| v.as_bool())
-    .unwrap_or(false);
+            let pair_ctx = PairingCtx {
+                state: pairing_state.clone(),
+                app: app_handle.clone(),
+            };
 
-            // Initialize device state
+            let api = Router::new()
+                .merge(pairing_router(pair_ctx));
+                // .merge(other_routes()) ← later
 
+            // -------------------------------
+            // Start Axum server (Hub API)
+            // -------------------------------
+            tauri::async_runtime::spawn(async move {
+                let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3000));
+                let listener = tokio::net::TcpListener::bind(addr)
+                    .await
+                    .expect("failed to bind API port");
 
-
-let mut initial_state = DeviceState::new(device_id.clone());
-
-// 🔑 LOAD paired + controllers
-load_persisted_state(&store, &mut initial_state);
-
-let device_state = Arc::new(Mutex::new(DeviceState {
-    device_id,
-    device_name: Some("Living Room Screen".to_string()),
-    paired,
-    pairing_code: None,
-    controllers,
-    isPairing,
-}));
-
-let mdns_handle: Arc<Mutex<Option<MdnsHandle>>> =
-    Arc::new(Mutex::new(None));
-
-      // Make state available to commands
-            app.manage(device_state.clone());
-            app.manage(mdns_handle.clone());
+                axum::serve(listener, api)
+                    .await
+                    .expect("axum server crashed");
+            });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-    greet,
-    get_device_state,
-    start_pairing_mode,
-    stop_pairing,
-    list_controllers,
-    set_device_name,
-])
-
+        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
