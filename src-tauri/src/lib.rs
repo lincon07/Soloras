@@ -14,7 +14,14 @@ use tauri::Manager;
 use tauri_plugin_store::StoreBuilder;
 use uuid::Uuid;
 
-use pairing_server::start_pairing_server;
+use pairing_server::{
+    start_pairing_server,
+    start_pairing_mode,
+    stop_pairing,
+    list_controllers,
+    set_device_name,
+};
+
 use crate::persistence::load_persisted_state;
 
 type MdnsOpt = Arc<Mutex<Option<MdnsHandle>>>;
@@ -48,6 +55,7 @@ pub fn run() {
 let store = StoreBuilder::new(app, "device.json").build()?;
 let _ = store.reload();
 
+app.manage(store.clone());
             // Load or generate device_id
 let device_id = match store.get("device_id") {
     Some(v) => v.as_str().unwrap().to_string(),
@@ -69,6 +77,14 @@ let controllers = store
     .and_then(|v| serde_json::from_value(v.clone()).ok())
     .unwrap_or_else(|| vec![]);
 
+let isPairing = store
+    .get("isPairing")
+    .and_then(|v| v.as_bool())
+    .unwrap_or(false);
+
+            // Initialize device state
+
+
 
 let mut initial_state = DeviceState::new(device_id.clone());
 
@@ -81,38 +97,27 @@ let device_state = Arc::new(Mutex::new(DeviceState {
     paired,
     pairing_code: None,
     controllers,
+    isPairing,
 }));
 
 let mdns_handle: Arc<Mutex<Option<MdnsHandle>>> =
     Arc::new(Mutex::new(None));
 
-{
-    let state = device_state.lock().unwrap();
-    if !state.paired {
-        *mdns_handle.lock().unwrap() =
-            Some(MdnsHandle::start(&state));
-    }
-}
-
-            
-            // Start pairing server
-start_pairing_server(
-    app.handle().clone(),
-    device_state.clone(),
-    mdns_handle.clone(),
-    store.clone(),
-);
-
-            // Make state available to commands
+      // Make state available to commands
             app.manage(device_state.clone());
             app.manage(mdns_handle.clone());
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
-            get_device_state
-        ])
+    greet,
+    get_device_state,
+    start_pairing_mode,
+    stop_pairing,
+    list_controllers,
+    set_device_name,
+])
+
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

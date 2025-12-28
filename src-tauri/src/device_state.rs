@@ -15,16 +15,18 @@ pub struct DeviceState {
     pub paired: bool,
     pub pairing_code: Option<String>,
     pub controllers: Vec<Controller>,
+    pub isPairing: bool,
 }
 
 impl DeviceState {
     pub fn new(device_id: String) -> Self {
         Self {
             device_id,
-            device_name: Some("Living Room Screen".to_string()),
+            device_name: None,
             paired: false,
             pairing_code: None,
             controllers: vec![],
+            isPairing: false,
         }
     }
 }

@@ -8,11 +8,10 @@ import { UpdaterProvider } from "./providers/updater"
 const Providers = ({ children }: { children: React.ReactNode }) => {
     return (
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-                <Toaster position="bottom-center" />
-            
+            <Toaster position="bottom-center" />
             <AutoStartProvider>
                 <UpdaterProvider>
-                    {children}
+                        {children}
                 </UpdaterProvider>
             </AutoStartProvider>
         </ThemeProvider>

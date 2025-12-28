@@ -21,7 +21,18 @@ use crate::{
     persistence::persist_state,
 };
 
+
 /// ---------- Request Bodies ----------
+
+use serde::Serialize;
+
+#[derive(Serialize, Clone)]
+struct PairingStatusEvent {
+    status: String,
+    reason: Option<String>,
+}
+
+
 
 #[derive(Deserialize)]
 struct ConfirmBody {
@@ -43,7 +54,21 @@ fn validate_token(state: &DeviceState, token: &str) -> bool {
     state.controllers.iter().any(|c| c.auth_token == token)
 }
 
+
+
 /// ---------- Tauri Commands ----------
+
+// stop paring mode
+#[tauri::command]
+pub fn stop_pairing(
+    state: tauri::State<'_, Arc<Mutex<DeviceState>>>,
+    store: tauri::State<'_, Arc<Store<Wry>>>,
+) {
+    let mut s = state.lock().unwrap();
+    s.isPairing = false;
+    persist_state(&store, &s);
+}
+
 
 #[tauri::command]
 pub fn list_controllers(
@@ -104,6 +129,42 @@ store: Arc<Store<Wry>>,
     });
 }
 
+#[tauri::command]
+pub fn start_pairing_mode(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<Mutex<DeviceState>>>,
+    mdns: tauri::State<'_, Arc<Mutex<Option<MdnsHandle>>>>,
+    store: tauri::State<'_, Arc<Store<Wry>>>,
+) {
+    let mut s = state.lock().unwrap();
+if s.paired || s.isPairing {
+    let _ = app.emit(
+        "device-already-paired-or-pairing",
+        PairingStatusEvent {
+            status: "error".into(),
+            reason: Some("Device is already paired or currently pairing".into()),
+        },
+    );
+    return;
+}
+
+    s.isPairing = true;
+    let _ = app.emit("device-state-updated", s.clone());
+
+    // start mDNS
+    *mdns.lock().unwrap() = Some(MdnsHandle::start(&s));
+
+    // start pairing server
+    start_pairing_server(
+        app.clone(),
+        state.inner().clone(),
+        mdns.inner().clone(),
+        store.inner().clone(),
+    );
+}
+
+
+
 /// ---------- Handlers ----------
 
 async fn handle_pair_request(
@@ -116,6 +177,7 @@ async fn handle_pair_request(
         let mut s = state.lock().unwrap();
         s.pairing_code = Some(code.clone());
         s.paired = false;
+        s.isPairing = true;
         let _ = app.emit("device-state-updated", s.clone());
     }
 
@@ -146,6 +208,7 @@ async fn handle_pair_confirm(
             s.controllers.push(controller.clone());
             s.paired = true;
             s.pairing_code = None;
+            s.isPairing = false;
 
             // 🔒 Persist pairing + controllers
             persist_state(&store, &s);
@@ -161,4 +224,22 @@ async fn handle_pair_confirm(
         }
         _ => StatusCode::UNAUTHORIZED.into_response(),
     }
+}
+
+#[tauri::command]
+pub fn set_device_name(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<Mutex<DeviceState>>>,
+    store: tauri::State<'_, Arc<Store<Wry>>>,
+    name: String,
+) {
+    let mut s = state.lock().unwrap();
+
+    s.device_name = Some(name.clone());
+
+    // persist
+    store.set("device_name", name);
+    let _ = store.save();
+
+    let _ = app.emit("device-state-updated", s.clone());
 }
