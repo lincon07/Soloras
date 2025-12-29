@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Dashboard } from './components/pages/dashboard/dashboard';
 import Providers from './providers';
 import { Menu } from './menu-bar';
 import SettingsPage from './components/pages/settings/settings';
+import Dashboard from './components/pages/dashboard/dashboard';
 
 
 export const AppRoutes = () => {

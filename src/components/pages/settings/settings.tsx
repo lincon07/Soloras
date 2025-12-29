@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { toast } from "sonner"
@@ -14,9 +14,10 @@ import {
 
 import PairingPrompt from "./pairing-promp"
 
-import SettingsIcon from "@mui/icons-material/Settings"
 import WifiIcon from "@mui/icons-material/Wifi"
 import { WifiSyncIcon } from "lucide-react"
+
+const IDLE_TIMEOUT = 5000 // 5 seconds
 
 const SettingsPage = () => {
   /* ---------------- Pairing ---------------- */
@@ -63,12 +64,9 @@ const SettingsPage = () => {
     const unlistenAlreadyPairing = listen(
       "device-already-paired-or-pairing",
       () => {
-        toast.error(
-          "Device is already paired or currently pairing.",
-          {
-            icon: <WifiSyncIcon />,
-          }
-        )
+        toast.error("Device is already paired or currently pairing.", {
+          icon: <WifiSyncIcon />,
+        })
       }
     )
 
@@ -78,13 +76,55 @@ const SettingsPage = () => {
     }
   }, [])
 
+  /* ---------------- Idle Detection ---------------- */
+
+  const idleTimer = useRef<number | null>(null)
+  const [hasInteracted, setHasInteracted] = useState(false)
+
+  useEffect(() => {
+    const resetIdleTimer = () => {
+      setHasInteracted(true)
+
+      if (idleTimer.current) {
+        window.clearTimeout(idleTimer.current)
+      }
+
+      idleTimer.current = window.setTimeout(() => {
+        setHasInteracted(false)
+        toast.info("No interaction detected.")
+      }, IDLE_TIMEOUT)
+    }
+
+    const events = [
+      "pointerdown",
+      "pointermove",
+      "keydown",
+      "wheel",
+      "touchstart",
+    ]
+
+    events.forEach((event) =>
+      window.addEventListener(event, resetIdleTimer)
+    )
+
+    // start timer immediately
+    resetIdleTimer()
+
+    return () => {
+      if (idleTimer.current) {
+        window.clearTimeout(idleTimer.current)
+      }
+      events.forEach((event) =>
+        window.removeEventListener(event, resetIdleTimer)
+      )
+    }
+  }, [])
+
   /* ---------------- UI ---------------- */
 
   return (
     <Container maxWidth="sm">
       <Stack spacing={4} py={4}>
-        {/* Header */}
-
         {/* Pairing Card */}
         <Paper
           variant="outlined"

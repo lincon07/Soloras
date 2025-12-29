@@ -15,8 +15,7 @@
         "title": "soloras-tauri",
         "focus": true,
         "zoomHotkeysEnabled": false,
-        "fullscreen": true,
-        "alwaysOnTop": true
+        "fullscreen": true
        
       }
     ],
