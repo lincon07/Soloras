@@ -9,9 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import {
   Activity,
-  Users,
   Wifi,
-  AlertCircle,
   CheckCircle,
   ListTodo,
 } from "lucide-react"
